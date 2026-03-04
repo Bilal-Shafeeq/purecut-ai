@@ -1,11 +1,24 @@
 import { motion } from "framer-motion";
-import { useRef, useState, useCallback } from "react";
-import featureImage from "@/assets/feature-preview.png";
+import { useRef, useState, useCallback, useEffect } from "react";
+import beforeImage from "@/assets/before-image.jpg";
+import afterImage from "@/assets/after-image.jpg";
 
 const BeforeAfterSlider = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.getBoundingClientRect().width);
+      }
+    };
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
 
   const updatePosition = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -16,7 +29,7 @@ const BeforeAfterSlider = () => {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     updatePosition(e.clientX);
   };
 
@@ -52,54 +65,50 @@ const BeforeAfterSlider = () => {
         >
           <div
             ref={containerRef}
-            className="relative aspect-[4/3] cursor-col-resize select-none touch-none"
+            className="relative aspect-[4/3] cursor-col-resize select-none touch-none overflow-hidden"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
           >
-            {/* After (checkered bg + cutout) */}
-            <div className="absolute inset-0">
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `linear-gradient(45deg, hsl(217 20% 12%) 25%, transparent 25%), linear-gradient(-45deg, hsl(217 20% 12%) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, hsl(217 20% 12%) 75%), linear-gradient(-45deg, transparent 75%, hsl(217 20% 12%) 75%)`,
-                  backgroundSize: "20px 20px",
-                  backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
-                  backgroundColor: "hsl(217 33% 8%)",
-                }}
-              />
-              <img src={featureImage} alt="After - background removed" className="absolute inset-0 w-full h-full object-cover" />
-            </div>
+            {/* After image (full width, shown behind) */}
+            <img
+              src={afterImage}
+              alt="After - background removed"
+              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+            />
 
-            {/* Before (with bg) */}
+            {/* Before image (clipped by slider position) */}
             <div
               className="absolute inset-0 overflow-hidden"
               style={{ width: `${sliderPos}%` }}
             >
-              <div className="absolute inset-0 bg-accent/20" />
               <img
-                src={featureImage}
+                src={beforeImage}
                 alt="Before - with background"
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ width: `${containerRef.current ? containerRef.current.clientWidth : 100}px`, maxWidth: "none" }}
+                className="absolute inset-0 h-full object-cover"
+                style={{ width: `${containerWidth}px` }}
+                draggable={false}
               />
             </div>
 
-            {/* Slider handle */}
+            {/* Slider line */}
             <div
-              className="absolute top-0 bottom-0 w-0.5 bg-foreground/80"
+              className="absolute top-0 bottom-0 w-[2px] bg-foreground/80 z-10"
               style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}
             >
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-foreground/90 flex items-center justify-center shadow-lg">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-background">
-                  <path d="M5 3L2 8L5 13M11 3L14 8L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              {/* Handle circle */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-foreground/90 flex items-center justify-center shadow-lg z-20 cursor-grab active:cursor-grabbing">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M5 3L2 8L5 13M11 3L14 8L11 13" stroke="hsl(222 47% 3%)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             </div>
 
             {/* Labels */}
-            <div className="absolute top-3 left-3 glass-card rounded-full px-3 py-1 text-xs font-medium">Before</div>
-            <div className="absolute top-3 right-3 glass-card rounded-full px-3 py-1 text-xs font-medium">After</div>
+            <div className="absolute top-3 left-3 glass-card rounded-full px-3 py-1 text-xs font-semibold z-10">Before</div>
+            <div className="absolute top-3 right-3 glass-card rounded-full px-3 py-1 text-xs font-semibold z-10">After</div>
           </div>
         </motion.div>
       </div>
