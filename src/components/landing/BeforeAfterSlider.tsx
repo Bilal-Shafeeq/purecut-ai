@@ -69,16 +69,16 @@ const BeforeAfterSlider = ({
   const currentAfter = afterImageSrc || defaultAfterImageSrc;
   const hasUserImage = !!beforeImageSrc;
 
-  // When user uploads image, get its aspect ratio for dynamic sizing
+  // Calculate image aspect ratio for dynamic sizing
   useEffect(() => {
-    if (!hasUserImage) {
+    if (!currentBefore || currentBefore === PLACEHOLDER_IMAGE) {
       setImageAspectRatio(null);
       return;
     }
     const img = new Image();
     img.onload = () => setImageAspectRatio(img.width / img.height);
     img.src = currentBefore;
-  }, [currentBefore, hasUserImage]);
+  }, [currentBefore]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -178,14 +178,14 @@ const BeforeAfterSlider = ({
       onDrop={handleFileDrop}
     >
         <div
-          ref={containerRef}
-          className={`relative select-none touch-none overflow-hidden ${
-            !hasUserImage && compact ? "max-h-[260px]" : ""
-          } ${!hasUserImage || !imageAspectRatio ? "aspect-[4/3]" : ""}`}
-          style={{
-            ...(hasUserImage && imageAspectRatio ? { aspectRatio: imageAspectRatio } : {}),
-            cursor: isDragging ? "grabbing" : "col-resize",
-          }}
+            ref={containerRef}
+            className={`relative select-none touch-none overflow-hidden ${
+              !hasUserImage && compact ? "max-h-[260px]" : ""
+            }`}
+            style={{
+              ...(imageAspectRatio ? { aspectRatio: imageAspectRatio } : { aspectRatio: "4/3" }),
+              cursor: isDragging ? "grabbing" : "col-resize",
+            }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -199,16 +199,13 @@ const BeforeAfterSlider = ({
             <div
               className="absolute inset-0"
               style={{
-                backgroundImage: `linear-gradient(45deg, hsl(217 20% 14%) 25%, transparent 25%), linear-gradient(-45deg, hsl(217 20% 14%) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, hsl(217 20% 14%) 75%), linear-gradient(-45deg, transparent 75%, hsl(217 20% 14%) 75%)`,
-                backgroundSize: "24px 24px",
-                backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0px",
-                backgroundColor: "hsl(217 33% 10%)",
+                backgroundColor: "#04060B",
               }}
             />
             <img
               src={currentAfter}
               alt="After - background removed"
-              className="absolute inset-0 w-full h-full object-cover object-center"
+              className="absolute inset-0 w-full h-full object-contain object-center"
               draggable={false}
             />
           </div>
@@ -221,7 +218,7 @@ const BeforeAfterSlider = ({
             <img
               src={currentBefore}
               alt="Before - original"
-              className="absolute inset-0 w-full h-full object-cover object-center"
+              className="absolute inset-0 w-full h-full object-contain object-center"
               draggable={false}
             />
           </div>
