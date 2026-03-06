@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-5 gap-10">
           <div className="md:col-span-1 mt-[-32px]">
-            <img src={logo} alt="PureCut AI" className="h-[100px]" />
+            <img src={logo} alt="PureCut AI" />
             <p className="text-sm text-muted-foreground leading-relaxed">
               AI-powered background removal for everyone. Fast, accurate, and affordable.
             </p>
