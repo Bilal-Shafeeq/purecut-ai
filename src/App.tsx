@@ -8,6 +8,8 @@ import Workspace from "./pages/Workspace";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Pricing from "./pages/Pricing";
+import History from "./pages/History"; // Import History component
+import Payment from "./pages/Payment"; // Import Payment component
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/history" element={<History />} /> {/* Add History route */}
+          <Route path="/payment" element={<Payment />} /> {/* Add Payment route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

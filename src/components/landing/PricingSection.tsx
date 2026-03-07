@@ -6,33 +6,23 @@ import { Link } from "react-router-dom";
 const plans = [
   {
     name: "Free",
-    price: "₹0",
+    price: "0",
     period: "forever",
     description: "Try it out with no commitment",
-    features: ["5 images per day", "Standard quality", "JPG & PNG support", "Web download"],
+    features: ["3 credits", "Standard quality", "JPG & PNG support", "Web download"],
     cta: "Start Free",
     variant: "neon" as const,
     popular: false,
   },
   {
-    name: "Pro",
-    price: "₹499",
-    period: "/month",
+    name: "Paid",
+    price: "$20",
+    period: "/year",
     description: "For professionals and teams",
-    features: ["Unlimited images", "HD quality output", "All formats (WEBP)", "Batch processing", "Priority processing", "API access"],
-    cta: "Upgrade to Pro",
+    features: ["Unlimited images", "HD quality output", "All formats (WEBP)", "Batch processing", "Priority processing", "Image History"],
+    cta: "Upgrade to Paid",
     variant: "hero" as const,
     popular: true,
-  },
-  {
-    name: "Credits",
-    price: "₹99",
-    period: "/50 credits",
-    description: "Pay as you go",
-    features: ["50 images per pack", "HD quality output", "All formats", "Never expires", "No subscription"],
-    cta: "Buy Credits",
-    variant: "neon" as const,
-    popular: false,
   },
 ];
 
@@ -81,7 +71,7 @@ const PricingSection = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/register">
+              <Link to="/payment">
                 <Button variant={plan.variant} className="w-full" size="lg">
                   {plan.cta}
                 </Button>
