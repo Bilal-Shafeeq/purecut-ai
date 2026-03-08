@@ -74,10 +74,11 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ onSuccess }) => {
         googleId.initialize({
           client_id: clientId,
           callback: handleCredentialResponse,
+          auto_select: false, // Disable One Tap prompt
         });
         googleId.renderButton(
           googleButtonRef.current,
-          { theme: 'outline', size: 'large', width: '300px' }
+          { theme: 'outline', size: 'large', width: '100%' }
         );
       }
     };
