@@ -11,11 +11,22 @@ type GoogleAccountsId = {
   initialize: (options: {
     client_id: string;
     callback: (response: GoogleCredentialResponse) => void;
+    auto_select?: boolean;
+    cancel_on_tap_outside?: boolean;
   }) => void;
   renderButton: (
     parent: HTMLElement,
-    options: { theme?: string; size?: string; width?: string }
+    options: {
+      theme?: string;
+      size?: string;
+      width?: number | string;
+      text?: string;
+      shape?: string;
+      logo_alignment?: string;
+      type?: string;
+    }
   ) => void;
+  disableAutoSelect?: () => void;
 };
 
 declare global {
@@ -68,19 +79,34 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ onSuccess }) => {
         document.head.appendChild(script);
       });
 
+    const renderGoogleButton = () => {
+      const googleId = window.google?.accounts?.id;
+      const container = googleButtonRef.current;
+      if (!googleId || !container) return;
+      const width = Math.max(240, Math.floor(container.clientWidth || 0));
+      container.innerHTML = '';
+      googleId.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        width: width,
+        text: 'continue_with',
+        shape: 'pill',
+        logo_alignment: 'left',
+        type: 'standard',
+      });
+    };
+
     const initializeGoogleSignIn = () => {
       const googleId = window.google?.accounts?.id;
-      if (googleId && googleButtonRef.current) {
-        googleId.initialize({
-          client_id: clientId,
-          callback: handleCredentialResponse,
-          auto_select: false, // Disable One Tap prompt
-        });
-        googleId.renderButton(
-          googleButtonRef.current,
-          { theme: 'outline', size: 'large', width: '100%' }
-        );
-      }
+      if (!googleId) return;
+      googleId.initialize({
+        client_id: clientId,
+        callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      googleId.disableAutoSelect?.();
+      renderGoogleButton();
     };
 
     const handleCredentialResponse = async (response: GoogleCredentialResponse) => {
@@ -112,8 +138,16 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ onSuccess }) => {
       }
     };
 
+    let resizeObserver: ResizeObserver | null = null;
+
     loadGoogleScript()
-      .then(() => initializeGoogleSignIn())
+      .then(() => {
+        initializeGoogleSignIn();
+        if (googleButtonRef.current && 'ResizeObserver' in window) {
+          resizeObserver = new ResizeObserver(() => renderGoogleButton());
+          resizeObserver.observe(googleButtonRef.current);
+        }
+      })
       .catch(() => {
         toast({
           title: "Google Script Load Failed",
@@ -121,6 +155,12 @@ const GoogleLogin: React.FC<GoogleLoginProps> = ({ onSuccess }) => {
           variant: "destructive",
         });
       });
+
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
   }, [loginWithGoogle, toast, onSuccess]);
 
   return <div ref={googleButtonRef} className="w-full" />;
