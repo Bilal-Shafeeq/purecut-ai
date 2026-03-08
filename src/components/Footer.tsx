@@ -13,7 +13,7 @@ const Footer = () => {
             </p>
           </div>
 
-          <div className="md:col-span-1"></div> {/* Empty column to push "Product" */}
+          <div className="md:col-span-1"></div> 
 
           <div>
             <h4 className="font-semibold font-display mb-4 text-sm">Product</h4>
