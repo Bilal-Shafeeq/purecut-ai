@@ -124,6 +124,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ 
           email: googleData.email,
           name: googleData.name,
+          sub: googleData.sub,
+          google_id: googleData.sub,
           fingerprint,
           login_type: 'google'
         }),
