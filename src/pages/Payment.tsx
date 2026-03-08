@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import AuthModal from "@/components/AuthModal";
 
 // Make sure to call `loadStripe` outside of a component’s render to avoid
 // recreating the `Stripe` object on every render.
@@ -18,13 +19,33 @@ const CheckoutForm = () => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
-  const { upgradeToPaid } = useAuth();
+  const { upgradeToPaid, isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "Please log in or sign up before making a payment.",
+      });
+      navigate('/login');
+    }
+  }, [isLoggedIn, navigate, toast]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (!isLoggedIn) {
+      toast({
+        title: "Login Required",
+        description: "Please log in before making a payment.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
 
     if (!stripe || !elements) {
       // Stripe.js has not yet loaded.
@@ -62,7 +83,7 @@ const CheckoutForm = () => {
         title: "Payment successful!",
         description: "You now have unlimited access to PureCut AI.",
       });
-      navigate('/'); // Redirect to home after successful payment
+      navigate('/tool'); // Redirect to tool after successful payment
     }
     setLoading(false);
   };
@@ -94,23 +115,37 @@ const CheckoutForm = () => {
 };
 
 const Payment = () => {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+
+  const handleLoginClick = () => {
+    setAuthModalMode('login');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleRegisterClick = () => {
+    setAuthModalMode('signup');
+    setIsAuthModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar onLoginClick={() => {}} onRegisterClick={() => {}} />
+      <Navbar onLoginClick={handleLoginClick} onRegisterClick={handleRegisterClick} />
       <div className="flex-grow container mx-auto px-4 max-w-2xl py-16">
-        <h1 className="text-4xl md:text-5xl font-bold font-display mb-8 text-center">Complete Your Purchase</h1>
-        <p className="text-muted-foreground text-center mb-12">
-          Securely process your payment for unlimited access to PureCut AI.
-        </p>
-
-        <Elements stripe={stripePromise}>
-          <div className="glass-card p-8 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold mb-6">Payment Details</h2>
+        <div className="glass-card rounded-2xl p-8">
+          <h1 className="text-3xl font-bold font-display mb-2 text-center">Upgrade to Paid</h1>
+          <p className="text-muted-foreground mb-8 text-center">Get unlimited HD background removals for 1 year.</p>
+          <Elements stripe={stripePromise}>
             <CheckoutForm />
-          </div>
-        </Elements>
+          </Elements>
+        </div>
       </div>
       <Footer />
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        initialMode={authModalMode}
+      />
     </div>
   );
 };

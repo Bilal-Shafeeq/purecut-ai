@@ -20,7 +20,7 @@ const CTASection = () => {
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
             Join thousands of creators, marketers, and developers who trust PureCut AI.
           </p>
-          <Link to="/workspace">
+          <Link to="/tool">
             <Button variant="hero" size="xl">
               Get Started Free <ArrowRight className="w-5 h-5" />
             </Button>

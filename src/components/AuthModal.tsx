@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -13,36 +14,33 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import GoogleLogin from './GoogleLogin';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialMode?: 'login' | 'signup';
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const [isLogin, setIsLogin] = useState(true); // true for login, false for signup
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'login' }) => {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login'); // true for login, false for signup
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, signup, upgradeToPaid, loginWithGoogle } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      await loginWithGoogle();
-      toast({ title: "Logged in with Google!", description: "Welcome back." });
-      onClose();
-    } catch (error: any) {
-      toast({ 
-        title: "Google login failed", 
-        description: error.message || "Could not authenticate with Google.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setLoading(false);
+  // Reset mode when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsLogin(initialMode === 'login');
+      setEmail('');
+      setName('');
+      setPassword('');
     }
-  };
+  }, [isOpen, initialMode]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,10 +50,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         await login(email, password);
         toast({ title: "Logged in successfully!", description: "Welcome back." });
       } else {
-        await signup(email, password);
+        await signup(email, password, name);
         toast({ title: "Signed up successfully!", description: "Welcome to PureCut AI." });
       }
       onClose();
+      navigate('/tool');
     } catch (error: any) {
       toast({ 
         title: isLogin ? "Login failed" : "Signup failed", 
@@ -78,6 +77,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         </DialogHeader>
         <form onSubmit={handleAuth} className="space-y-6 pt-4">
           <div className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required={!isLogin}
+                  className="w-full"
+                  disabled={loading}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -123,16 +137,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-3 h-11"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />}
-              {isLogin ? "Log In with Google" : "Sign Up with Google"}
-            </Button>
+            <GoogleLogin onSuccess={() => {
+              onClose();
+              navigate('/tool');
+            }} />
           </div>
 
           <div className="space-y-2 text-center pt-2">
@@ -145,22 +153,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             >
               {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Log In"}
             </Button>
-            
-            {isLogin && (
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => {
-                  upgradeToPaid();
-                  toast({ title: "Upgraded to Paid!", description: "Enjoy unlimited features." });
-                  onClose();
-                }}
-                className="w-full text-xs text-muted-foreground hover:text-primary"
-                disabled={loading}
-              >
-                Simulate Upgrade to Paid
-              </Button>
-            )}
           </div>
         </form>
       </DialogContent>

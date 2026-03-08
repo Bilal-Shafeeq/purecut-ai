@@ -25,9 +25,9 @@ const Index = () => {
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [state, setState] = useState<ProcessingState>("idle");
   const { toast } = useToast();
-  const { isLoggedIn, isPaidUser, login } = useAuth(); // Use auth context
-  const [credits, setCredits] = useState<number>(3); // Placeholder for credits
+  const { isLoggedIn, isPaidUser, login, user, useCredit } = useAuth(); // Use auth context
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // State for auth modal
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login'); // State for auth modal mode
 
   // Batch processing states
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
@@ -114,10 +114,10 @@ const Index = () => {
     }
 
     // Check credits for free users
-    if (isLoggedIn && !isPaidUser && credits <= 0) {
+    if (!useCredit()) {
       toast({
         title: "No credits remaining",
-        description: "Please upgrade to a paid plan or wait for daily credits to reset.",
+        description: "Free credits finished. Please upgrade your plan.",
         variant: "destructive",
       });
       return;
@@ -151,10 +151,7 @@ const Index = () => {
         description: "Your image is ready for download.",
       });
 
-      // Decrement credits for free users
-      if (isLoggedIn && !isPaidUser) {
-        setCredits((prev) => Math.max(0, prev - 1));
-      }
+
     } catch (error) {
       console.error("Background removal failed:", error);
       setState("error");
@@ -178,15 +175,7 @@ const Index = () => {
       return;
     }
 
-    // Check credits for free users (for batch, assume 1 credit per image)
-    if (isLoggedIn && !isPaidUser && credits < batchFiles.length) {
-      toast({
-        title: "Insufficient credits",
-        description: `You need ${batchFiles.length} credits for this batch, but only have ${credits}. Please upgrade or reduce batch size.`,
-        variant: "destructive",
-      });
-      return;
-    }
+
 
     // Only paid users can do batch processing
     if (!isPaidUser) {
@@ -200,7 +189,6 @@ const Index = () => {
 
     const newBatchProcessingStates = [...batchProcessingStates];
     const newBatchProcessedImages = [...batchProcessedImages];
-    let remainingCredits = credits;
 
     for (let i = 0; i < batchFiles.length; i++) {
       newBatchProcessingStates[i] = "processing";
@@ -226,11 +214,6 @@ const Index = () => {
         }
         newBatchProcessedImages[i] = responseData.url;
         newBatchProcessingStates[i] = "done";
-
-        if (isLoggedIn && !isPaidUser) {
-          remainingCredits--;
-          setCredits(remainingCredits);
-        }
       } catch (error) {
         console.error(`Batch processing failed for image ${i}:`, error);
         newBatchProcessingStates[i] = "error";
@@ -328,10 +311,12 @@ const Index = () => {
   const hasBatchImages = batchFiles.length > 0;
 
   const handleLoginClick = () => {
+    setAuthModalMode('login');
     setIsAuthModalOpen(true);
   };
 
   const handleRegisterClick = () => {
+    setAuthModalMode('signup');
     setIsAuthModalOpen(true);
   };
 
@@ -355,9 +340,9 @@ const Index = () => {
 
         {hasUserImage && (
           <div className="flex flex-col items-center gap-4 mt-6 mb-12">
-            {isLoggedIn && !isPaidUser && (
+            {isLoggedIn && !isPaidUser && user && (
               <p className="text-sm text-muted-foreground">
-                {credits} credits remaining
+                {user.credits} credits remaining
               </p>
             )}
             {isLoggedIn && isPaidUser && (
@@ -379,7 +364,7 @@ const Index = () => {
                 variant="cta"
                 size="lg"
                 onClick={handleUpload}
-                disabled={isProcessing || processedImage !== null || (isLoggedIn && !isPaidUser && credits <= 0)}
+                disabled={isProcessing || processedImage !== null || (isLoggedIn && !isPaidUser && user && user.credits <= 0)}
               >
                 {state === "processing" ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -465,7 +450,11 @@ const Index = () => {
       <PricingSection />
       <CTASection />
       <Footer />
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        initialMode={authModalMode}
+      />
     </div>
   );
 };

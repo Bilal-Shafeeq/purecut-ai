@@ -53,7 +53,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <Link to="/workspace">
+            <Link to="/tool">
               <Button variant="hero" size="xl">
                 Remove Background Free
                 <ArrowRight className="w-5 h-5" />

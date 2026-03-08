@@ -1,19 +1,24 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { getFingerprint } from '@/lib/fingerprint';
 
 interface User {
   email: string;
+  name: string;
   isPaid: boolean;
+  credits: number;
+  plan: 'free' | 'paid';
 }
 
 interface AuthContextType {
   isLoggedIn: boolean;
   isPaidUser: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  login: (email: string, password: string, name?: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: (googleData: any) => Promise<void>;
   logout: () => void;
   upgradeToPaid: () => void;
+  useCredit: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,30 +37,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const parsedUser = JSON.parse(savedUser);
       setUser(parsedUser);
       setIsLoggedIn(true);
-      setIsPaidUser(parsedUser.isPaid || false);
+      setIsPaidUser(parsedUser.isPaid || parsedUser.plan === 'paid');
     }
   }, []);
 
-  const handleAuthResponse = (data: any) => {
-    if (!data) throw new Error("No response data from server");
+  const handleAuthResponse = (data: any, loginType: 'google' | 'email') => {
+    console.log('Auth response data:', data);
     
-    // Assuming data contains user info and paid status
-    const userData = {
+    // Assuming data contains user info or fallback to defaults
+    const userData: User = {
       email: data.email || data.user?.email || "user@example.com",
-      isPaid: data.isPaid || data.user?.isPaid || false
+      name: data.name || data.user?.name || "User",
+      isPaid: data.isPaid || data.user?.isPaid || data.plan === 'paid' || false,
+      credits: data.credits !== undefined ? data.credits : 3,
+      plan: data.plan || (data.isPaid ? 'paid' : 'free')
     };
+    
     setUser(userData);
     setIsLoggedIn(true);
-    setIsPaidUser(userData.isPaid);
+    setIsPaidUser(userData.plan === 'paid');
     localStorage.setItem('purecut_user', JSON.stringify(userData));
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, name: string = "User") => {
     try {
+      const fingerprint = await getFingerprint();
       const response = await fetch(AUTH_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, action: 'login' }),
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          name, 
+          fingerprint, 
+          login_type: 'email' 
+        }),
       });
 
       if (!response.ok) {
@@ -64,19 +80,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       const data = await response.json();
-      handleAuthResponse(data);
+      handleAuthResponse(data, 'email');
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     }
   };
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, name: string) => {
     try {
+      const fingerprint = await getFingerprint();
       const response = await fetch(AUTH_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, action: 'signup' }),
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          name, 
+          fingerprint, 
+          login_type: 'email' 
+        }),
       });
 
       if (!response.ok) {
@@ -85,19 +108,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       const data = await response.json();
-      handleAuthResponse(data);
+      handleAuthResponse(data, 'email');
     } catch (error: any) {
       console.error('Signup error:', error);
       throw error;
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (googleData: any) => {
     try {
+      const fingerprint = await getFingerprint();
       const response = await fetch(AUTH_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'google' }),
+        body: JSON.stringify({ 
+          email: googleData.email,
+          name: googleData.name,
+          fingerprint,
+          login_type: 'google'
+        }),
       });
 
       if (!response.ok) {
@@ -106,7 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       const data = await response.json();
-      handleAuthResponse(data);
+      handleAuthResponse(data, 'google');
     } catch (error: any) {
       console.error('Google auth error:', error);
       throw error;
@@ -123,10 +152,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const upgradeToPaid = () => {
     setIsPaidUser(true);
     if (user) {
-      const updatedUser = { ...user, isPaid: true };
+      const updatedUser: User = { ...user, isPaid: true, plan: 'paid', credits: 999999 };
       setUser(updatedUser);
       localStorage.setItem('purecut_user', JSON.stringify(updatedUser));
     }
+  };
+
+  const useCredit = (): boolean => {
+    if (!user) return false;
+    if (user.plan === 'paid') return true;
+    
+    if (user.credits > 0) {
+      const updatedUser = { ...user, credits: user.credits - 1 };
+      setUser(updatedUser);
+      localStorage.setItem('purecut_user', JSON.stringify(updatedUser));
+      return true;
+    }
+    
+    return false;
   };
 
   return (
@@ -138,7 +181,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signup, 
       loginWithGoogle, 
       logout, 
-      upgradeToPaid 
+      upgradeToPaid,
+      useCredit
     }}>
       {children}
     </AuthContext.Provider>
