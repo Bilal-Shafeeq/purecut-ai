@@ -9,6 +9,20 @@ interface User {
   plan: 'free' | 'paid';
 }
 
+type AuthResponse = {
+  email?: string;
+  name?: string;
+  isPaid?: boolean;
+  credits?: number;
+  plan?: 'free' | 'paid';
+  user?: {
+    email?: string;
+    name?: string;
+    isPaid?: boolean;
+    plan?: 'free' | 'paid';
+  };
+};
+
 interface AuthContextType {
   isLoggedIn: boolean;
   isPaidUser: boolean;
@@ -41,22 +55,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const handleAuthResponse = (data: any, loginType: 'google' | 'email') => {
-    console.log('Auth response data:', data);
-    
-    // Assuming data contains user info or fallback to defaults
+  const handleAuthResponse = (data: AuthResponse | null, fallback: { email?: string; name?: string }) => {
+    const resolvedEmail = data?.email || data?.user?.email || fallback.email || "user@example.com";
+    const resolvedName = data?.name || data?.user?.name || fallback.name || "User";
+    const resolvedIsPaid = data?.isPaid || data?.user?.isPaid || data?.plan === 'paid' || false;
+    const resolvedPlan = data?.plan || (resolvedIsPaid ? 'paid' : 'free');
+    const resolvedCredits = data?.credits !== undefined ? data.credits : 3;
+
     const userData: User = {
-      email: data.email || data.user?.email || "user@example.com",
-      name: data.name || data.user?.name || "User",
-      isPaid: data.isPaid || data.user?.isPaid || data.plan === 'paid' || false,
-      credits: data.credits !== undefined ? data.credits : 3,
-      plan: data.plan || (data.isPaid ? 'paid' : 'free')
+      email: resolvedEmail,
+      name: resolvedName,
+      isPaid: resolvedIsPaid,
+      credits: resolvedCredits,
+      plan: resolvedPlan
     };
-    
+
     setUser(userData);
     setIsLoggedIn(true);
     setIsPaidUser(userData.plan === 'paid');
     localStorage.setItem('purecut_user', JSON.stringify(userData));
+  };
+
+  const parseJsonResponse = async (response: Response): Promise<AuthResponse | null> => {
+    const text = await response.text();
+    if (!text) return null;
+    try {
+      const parsed = JSON.parse(text);
+      return typeof parsed === 'object' && parsed ? (parsed as AuthResponse) : null;
+    } catch {
+      return null;
+    }
   };
 
   const login = async (email: string, password: string, name: string = "User") => {
@@ -79,9 +107,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorData.message || `Login failed with status ${response.status}`);
       }
       
-      const data = await response.json();
-      handleAuthResponse(data, 'email');
-    } catch (error: any) {
+      const data = await parseJsonResponse(response);
+      handleAuthResponse(data, { email, name });
+    } catch (error: unknown) {
       console.error('Login error:', error);
       throw error;
     }
@@ -107,15 +135,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorData.message || `Signup failed with status ${response.status}`);
       }
       
-      const data = await response.json();
-      handleAuthResponse(data, 'email');
-    } catch (error: any) {
+      const data = await parseJsonResponse(response);
+      handleAuthResponse(data, { email, name });
+    } catch (error: unknown) {
       console.error('Signup error:', error);
       throw error;
     }
   };
 
-  const loginWithGoogle = async (googleData: any) => {
+  const loginWithGoogle = async (googleData: { email?: string; name?: string; sub?: string }) => {
     try {
       const fingerprint = await getFingerprint();
       const response = await fetch(AUTH_WEBHOOK_URL, {
@@ -132,13 +160,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Google auth failed with status ${response.status}`);
+        const errorData = await parseJsonResponse(response);
+        const message = errorData && 'message' in errorData ? String((errorData as { message?: string }).message) : '';
+        throw new Error(message || `Google auth failed with status ${response.status}`);
       }
       
-      const data = await response.json();
-      handleAuthResponse(data, 'google');
-    } catch (error: any) {
+      const data = await parseJsonResponse(response);
+      handleAuthResponse(data, { email: googleData.email, name: googleData.name });
+    } catch (error: unknown) {
       console.error('Google auth error:', error);
       throw error;
     }
